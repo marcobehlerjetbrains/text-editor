@@ -27,7 +27,7 @@ public class Viewer {
     private static int rows;
     private static int columns;
 
-    private static int cursorX =0, cursorY = 0;
+    private static int cursorX =0, cursorY = 0, offsetY = 0, offsetX = 0;
     private static List<String> content= List.of();
 
     public static void main(String[] args) throws IOException {
@@ -43,11 +43,28 @@ public class Viewer {
         initEditor();
 
         while (true){
+            scroll();
             refreshScreen();
             int key = readKey();
             handleKey(key);
         }
 
+    }
+
+    private static void scroll() {
+        if (cursorY >=  rows + offsetY) {
+            offsetY = cursorY - rows + 1;
+        }
+        else if (cursorY < offsetY) {
+            offsetY = cursorY;
+        }
+
+        if (cursorX >=  columns + offsetX) {
+            offsetX = cursorX - columns + 1;
+        }
+        else if (cursorX < offsetX) {
+            offsetX = cursorX;
+        }
     }
 
     private static void openFile(String[] args) {
@@ -79,25 +96,33 @@ public class Viewer {
     }
 
     private static void drawCursor(StringBuilder builder) {
-        builder.append(String.format("\033[%d;%dH", cursorY + 1, cursorX + 1));
+        builder.append(String.format("\033[%d;%dH", cursorY - offsetY + 1, cursorX - offsetX + 1));
     }
 
     private static void drawLines(StringBuilder builder) {
         builder.append("\033[H");
         for (int i = 0; i < rows; i++) {
-
-            if (i >= content.size()) {
+            int fileRow = i + offsetY;
+            if (fileRow >= content.size()) {
                 builder.append("~");
             } else {
-                builder.append(content.get(i));
+                builder.append(renderLine(content.get(i), offsetX, columns));
             }
 
             builder.append("\033[K\r\n");
         }
     }
 
+    private static String renderLine(String line, int columnOffset, int screenColumns) {
+        int length = Math.max(0, line.length() - columnOffset);
+        if (length == 0) return "";
+
+        if (length > screenColumns) length = screenColumns;
+        return line.substring(columnOffset, columnOffset + length);
+    }
+
     private static void drawStatusMessage(StringBuilder builder) {
-        String statusMessage = "Rows: " + rows + "X:" + cursorX + " Y: " + cursorY;
+        String statusMessage = "Rows: " + rows + "X:" + cursorX + " Y: " + cursorY + " Off Y " + offsetY;
         builder.append("\033[7m")
                 .append(statusMessage)
                 .append(" ".repeat(Math.max(0, columns - statusMessage.length())))
@@ -182,7 +207,7 @@ public class Viewer {
                 cursorY--;
             }
         } else if (key == ARROW_DOWN) {
-            if (cursorY < rows - 1) {
+            if (cursorY < content.size()) {
                 cursorY++;
             }
         } else if (key == ARROW_LEFT) {
@@ -190,13 +215,18 @@ public class Viewer {
                 cursorX--;
             }
         } else if (key == ARROW_RIGHT) {
-            if (cursorX < columns -1) {
+            if (cursorX < content.get(cursorY).length()) {
                 cursorX++;
             }
         } else if (key == HOME) {
             cursorX = 0;
         } else if (key == END) {
-            cursorX = columns - 1;
+            cursorX = content.get(cursorY).length();
+        }
+
+        int lineLength = content.get(cursorY).length();
+        if (lineLength < cursorX) {
+            cursorX = lineLength;
         }
     }
 
