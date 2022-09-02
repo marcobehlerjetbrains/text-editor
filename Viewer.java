@@ -3,8 +3,12 @@ import com.sun.jna.Native;
 import com.sun.jna.Structure;
 
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public class Viewer {
 
@@ -24,6 +28,7 @@ public class Viewer {
     private static int columns;
 
     private static int cursorX =0, cursorY = 0;
+    private static List<String> content= List.of();
 
     public static void main(String[] args) throws IOException {
        // System.out.println("Hello World");
@@ -31,6 +36,9 @@ public class Viewer {
         System.out.println("\033[2J");
         System.out.println("\033[5H");*/
 
+        if (args.length == 1){
+            openFile(args);
+        }
         enableRawMode();
         initEditor();
 
@@ -40,6 +48,17 @@ public class Viewer {
             handleKey(key);
         }
 
+    }
+
+    private static void openFile(String[] args) {
+        Path file = Path.of(args[0]);
+        if (Files.exists(file)){
+            try (Stream<String> lines = Files.lines(file)) {
+                content = lines.collect(Collectors.toList());
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        }
     }
 
     private static void initEditor() {
@@ -66,7 +85,14 @@ public class Viewer {
     private static void drawLines(StringBuilder builder) {
         builder.append("\033[H");
         for (int i = 0; i < rows; i++) {
-            builder.append("~\033[K\r\n");
+
+            if (i >= content.size()) {
+                builder.append("~");
+            } else {
+                builder.append(content.get(i));
+            }
+
+            builder.append("\033[K\r\n");
         }
     }
 
