@@ -4,6 +4,7 @@ import com.sun.jna.Structure;
 
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.List;
 
 public class Viewer {
 
@@ -16,9 +17,13 @@ public class Viewer {
             PAGE_UP = 1006,
             PAGE_DOWN = 1007,
             DEL = 1008;
+
+    public static final List<Integer> CURSOR_KEYS = List.of(ARROW_UP, ARROW_DOWN, ARROW_LEFT, ARROW_RIGHT, HOME, END, PAGE_DOWN, PAGE_UP);
     private static LibC.Termios originalAttributes;
-    private static int rows = 10;
-    private static int columns = 10;
+    private static int rows;
+    private static int columns;
+
+    private static int cursorX =0, cursorY = 0;
 
     public static void main(String[] args) throws IOException {
        // System.out.println("Hello World");
@@ -30,7 +35,7 @@ public class Viewer {
         initEditor();
 
         while (true){
-            /*refreshScreen();*/
+            refreshScreen();
             int key = readKey();
             handleKey(key);
         }
@@ -40,27 +45,37 @@ public class Viewer {
     private static void initEditor() {
         LibC.Winsize windowSize = getWindowSize();
         columns = windowSize.ws_col;
-        rows = windowSize.ws_row;
+        rows = windowSize.ws_row - 1;
     }
 
     private static void refreshScreen() {
         StringBuilder builder = new StringBuilder();
-        
-        builder.append("\033[2J");
+        //builder.append("\033[2J");
+
+        drawLines(builder);
+        drawStatusMessage(builder);
+        drawCursor(builder);
+
+        System.out.print(builder);
+    }
+
+    private static void drawCursor(StringBuilder builder) {
+        builder.append(String.format("\033[%d;%dH", cursorY + 1, cursorX + 1));
+    }
+
+    private static void drawLines(StringBuilder builder) {
         builder.append("\033[H");
-
-        for (int i = 0; i < rows - 1; i++) {
-            builder.append("~\r\n");
+        for (int i = 0; i < rows; i++) {
+            builder.append("~\033[K\r\n");
         }
+    }
 
-        String statusMessage = "Marco Code's Editor - v0.0.1";
+    private static void drawStatusMessage(StringBuilder builder) {
+        String statusMessage = "Rows: " + rows + "X:" + cursorX + " Y: " + cursorY;
         builder.append("\033[7m")
                 .append(statusMessage)
                 .append(" ".repeat(Math.max(0, columns - statusMessage.length())))
                 .append("\033[0m");
-
-        builder.append("\033[H");
-        System.out.print(builder);
     }
 
 
@@ -127,12 +142,37 @@ public class Viewer {
             LibC.INSTANCE.tcsetattr(LibC.SYSTEM_OUT_FD, LibC.TCSAFLUSH, originalAttributes);
             System.exit(0);
         }
-        else {
-            System.out.print((char) + key + " -> (" + key + ")\r\n");
-
+        else if (CURSOR_KEYS.contains(key)) {
+            moveCursor(key);
         }
+//        else {
+//            System.out.print((char) + key + " -> (" + key + ")\r\n");
+//        }
     }
 
+    private static void moveCursor(int key) {
+        if (key == ARROW_UP) {
+            if (cursorY > 0) {
+                cursorY--;
+            }
+        } else if (key == ARROW_DOWN) {
+            if (cursorY < rows - 1) {
+                cursorY++;
+            }
+        } else if (key == ARROW_LEFT) {
+            if (cursorX > 0) {
+                cursorX--;
+            }
+        } else if (key == ARROW_RIGHT) {
+            if (cursorX < columns -1) {
+                cursorX++;
+            }
+        } else if (key == HOME) {
+            cursorX = 0;
+        } else if (key == END) {
+            cursorX = columns - 1;
+        }
+    }
 
 
     private static void enableRawMode() {
