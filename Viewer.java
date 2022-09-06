@@ -224,10 +224,13 @@ public class Viewer {
             cursorX = content.get(cursorY).length();
         }
 
-        int lineLength = content.get(cursorY).length();
-        if (lineLength < cursorX) {
-            cursorX = lineLength;
+        if (cursorY < content.size()) {
+            int lineLength = content.get(cursorY).length();
+            if (lineLength < cursorX) {
+                cursorX = lineLength;
+            }
         }
+
     }
 
 
