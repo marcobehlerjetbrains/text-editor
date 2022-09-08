@@ -3,8 +3,11 @@ import com.sun.jna.Native;
 import com.sun.jna.Structure;
 
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Stream;
 
 public class Viewer {
 
@@ -23,12 +26,15 @@ public class Viewer {
 
     private static int cursorX = 0, cursorY = 0;
 
+    private static List<String> content = List.of();
+
     public static void main(String[] args) throws IOException {
        // System.out.println("Hello World");
         /*System.out.println("\033[4;44;31mHello World\033[0mHello");
         System.out.println("\033[2J");
         System.out.println("\033[5H");*/
 
+        openFile(args);
         enableRawMode();
         initEditor();
 
@@ -40,6 +46,21 @@ public class Viewer {
 
     }
 
+    private static void openFile(String[] args) {
+        if (args.length == 1) {
+            String filename = args[0];
+            Path path = Path.of(filename);
+            if (Files.exists(path)) {
+                try (Stream<String> stream = Files.lines(path)) {
+                    content = stream.toList();
+                } catch (IOException e) {
+                    // TODO
+                }
+            }
+
+        }
+    }
+
     private static void initEditor() {
         LibC.Winsize windowSize = getWindowSize();
         columns = windowSize.ws_col;
@@ -48,12 +69,17 @@ public class Viewer {
 
     private static void refreshScreen() {
         StringBuilder builder = new StringBuilder();
-        
-        builder.append("\033[2J");
+
+        //builder.append("\033[2J");
         builder.append("\033[H");
 
         for (int i = 0; i < rows - 1; i++) {
-            builder.append("~\r\n");
+            if (i >= content.size()) {
+                builder.append("~");
+            } else {
+                builder.append(content.get(i));
+            }
+            builder.append("\033[K\r\n");
         }
 
         String statusMessage = "Marco Code's Editor - v0.0.1";
