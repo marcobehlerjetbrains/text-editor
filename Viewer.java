@@ -4,12 +4,24 @@ import com.sun.jna.Structure;
 
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.List;
 
 public class Viewer {
 
+    private static final int ARROW_UP = 1000
+            ,ARROW_DOWN = 1001
+            ,ARROW_LEFT = 1002,
+            ARROW_RIGHT = 1003,
+            HOME = 1004,
+            END = 1005,
+            PAGE_UP = 1006,
+            PAGE_DOWN = 1007,
+            DEL = 1008;
     private static LibC.Termios originalAttributes;
     private static int rows = 10;
     private static int columns = 10;
+
+    private static int cursorX = 0, cursorY = 0;
 
     public static void main(String[] args) throws IOException {
        // System.out.println("Hello World");
@@ -50,24 +62,108 @@ public class Viewer {
                 .append(" ".repeat(Math.max(0, columns - statusMessage.length())))
                 .append("\033[0m");
 
-        builder.append("\033[H");
+        builder.append(String.format("\033[%d;%dH", cursorY + 1, cursorX + 1));
         System.out.print(builder);
     }
 
 
     private static int readKey() throws IOException {
-        return System.in.read();
+        int key = System.in.read();
+        if (key != '\033') {
+            return key;
+        }
+
+        int nextKey = System.in.read();
+        if (nextKey != '[' && nextKey != 'O') {
+            return nextKey;
+        }
+
+        int yetAnotherKey = System.in.read();
+
+        if (nextKey == '[') {
+            return switch (yetAnotherKey) {
+                case 'A' -> ARROW_UP;  // e.g. esc[A == arrow_up
+                case 'B' -> ARROW_DOWN;
+                case 'C' -> ARROW_RIGHT;
+                case 'D' -> ARROW_LEFT;
+                case 'H' -> HOME;
+                case 'F' -> END;
+                case '0', '1', '2', '3', '4', '5', '6', '7', '8', '9' -> {  // e.g: esc[5~ == page_up
+                    int yetYetAnotherChar = System.in.read();
+                    if (yetYetAnotherChar != '~') {
+                        yield yetYetAnotherChar;
+                    }
+                    switch (yetAnotherKey) {
+                        case '1':
+                        case '7':
+                            yield HOME;
+                        case '3':
+                            yield DEL;
+                        case '4':
+                        case '8':
+                            yield END;
+                        case '5':
+                            yield PAGE_UP;
+                        case '6':
+                            yield PAGE_DOWN;
+                        default: yield yetAnotherKey;
+                    }
+                }
+                default -> yetAnotherKey;
+            };
+        } else  { //if (nextKey == 'O') {  e.g. escpOH == HOME
+            return switch (yetAnotherKey) {
+                case 'H' -> HOME;
+                case 'F' -> END;
+                default -> yetAnotherKey;
+            };
+        }
     }
 
     private static void handleKey(int key) {
         if (key == 'q') {
-            System.out.print("\033[2J");
-            System.out.print("\033[H");
-            LibC.INSTANCE.tcsetattr(LibC.SYSTEM_OUT_FD, LibC.TCSAFLUSH, originalAttributes);
-            System.exit(0);
+            exit();
         }
+        else if (List.of(ARROW_UP, ARROW_DOWN, ARROW_LEFT, ARROW_RIGHT, HOME, END).contains(key)) {
+            moveCursor(key);
+        }
+        /*else {
+            System.out.print((char) + key + " -> (" + key + ")\r\n");
+        }*/
     }
 
+    private static void exit() {
+        System.out.print("\033[2J");
+        System.out.print("\033[H");
+        LibC.INSTANCE.tcsetattr(LibC.SYSTEM_OUT_FD, LibC.TCSAFLUSH, originalAttributes);
+        System.exit(0);
+    }
+
+    private static void moveCursor(int key) {
+            switch (key) {
+                case ARROW_UP -> {
+                    if (cursorY > 0) {
+                        cursorY--;
+                    }
+                }
+                case ARROW_DOWN -> {
+                    if (cursorY < rows - 1) {
+                        cursorY++;
+                    }
+                }
+                case ARROW_LEFT -> {
+                    if (cursorX > 0) {
+                        cursorX--;
+                    }
+                } case ARROW_RIGHT -> {
+                    if (cursorX < columns - 1) {
+                        cursorX++;
+                    }
+                }
+                case HOME -> cursorX = 0;
+                case END -> cursorX = columns - 1;
+            }
+    }
 
 
     private static void enableRawMode() {
