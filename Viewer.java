@@ -12,9 +12,7 @@ import java.util.stream.Stream;
 
 public class Viewer {
 
-    private static final int ARROW_UP = 1000
-            ,ARROW_DOWN = 1001
-            ,ARROW_LEFT = 1002,
+    private static final int ARROW_UP = 1000, ARROW_DOWN = 1001, ARROW_LEFT = 1002,
             ARROW_RIGHT = 1003,
             HOME = 1004,
             END = 1005,
@@ -31,19 +29,19 @@ public class Viewer {
     private static Terminal terminal;
 
     public static void main(String[] args) throws IOException {
-       // System.out.println("Hello World");
+        // System.out.println("Hello World");
         /*System.out.println("\033[4;44;31mHello World\033[0mHello");
         System.out.println("\033[2J");
         System.out.println("\033[5H");*/
 
 
-	   terminal = isWindows() ? new WindowsTerminal() : new UnixTerminal();
+        terminal = isWindows() ? new WindowsTerminal() : new UnixTerminal();
 
         openFile(args);
         terminal.enableRawMode();
         initEditor();
 
-        while (true){
+        while (true) {
             scroll();
             refreshScreen();
             int key = readKey();
@@ -55,8 +53,7 @@ public class Viewer {
     private static void scroll() {
         if (cursorY >= rows + offsetY) {
             offsetY = cursorY - rows + 1;
-        }
-        else if (cursorY < offsetY) {
+        } else if (cursorY < offsetY) {
             offsetY = cursorY;
         }
     }
@@ -77,8 +74,8 @@ public class Viewer {
     }
 
     private static void initEditor() {
-	   final TerminalSize terminalSize = terminal.getTerminalSize();
-	   columns = terminalSize.width();
+        final TerminalSize terminalSize = terminal.getTerminalSize();
+        columns = terminalSize.width();
         rows = terminalSize.height() - 1;
     }
 
@@ -102,7 +99,7 @@ public class Viewer {
 
     private static void drawStatusBar(StringBuilder builder) {
         String statusMessage = "Rows: " + rows + "X:" + cursorX + " Y: " + cursorY;
-                builder.append("\033[7m")
+        builder.append("\033[7m")
                 .append(statusMessage)
                 .append(" ".repeat(Math.max(0, columns - statusMessage.length())))
                 .append("\033[0m");
@@ -160,12 +157,13 @@ public class Viewer {
                             yield PAGE_UP;
                         case '6':
                             yield PAGE_DOWN;
-                        default: yield yetAnotherKey;
+                        default:
+                            yield yetAnotherKey;
                     }
                 }
                 default -> yetAnotherKey;
             };
-        } else  { //if (nextKey == 'O') {  e.g. escpOH == HOME
+        } else { //if (nextKey == 'O') {  e.g. escpOH == HOME
             return switch (yetAnotherKey) {
                 case 'H' -> HOME;
                 case 'F' -> END;
@@ -177,8 +175,7 @@ public class Viewer {
     private static void handleKey(int key) {
         if (key == 'q') {
             exit();
-        }
-       else if (List.of(ARROW_UP, ARROW_DOWN, ARROW_LEFT, ARROW_RIGHT, HOME, END).contains(key)) {
+        } else if (List.of(ARROW_UP, ARROW_DOWN, ARROW_LEFT, ARROW_RIGHT, HOME, END).contains(key)) {
             moveCursor(key);
         }
         /*else {
@@ -194,46 +191,48 @@ public class Viewer {
     }
 
     private static void moveCursor(int key) {
-            switch (key) {
-                case ARROW_UP -> {
-                    if (cursorY > 0) {
-                        cursorY--;
-                    }
+        switch (key) {
+            case ARROW_UP -> {
+                if (cursorY > 0) {
+                    cursorY--;
                 }
-                case ARROW_DOWN -> {
-                    if (cursorY < content.size()) {
-                        cursorY++;
-                    }
-                }
-                case ARROW_LEFT -> {
-                    if (cursorX > 0) {
-                        cursorX--;
-                    }
-                } case ARROW_RIGHT -> {
-                    if (cursorX < columns - 1) {
-                        cursorX++;
-                    }
-                }
-                case HOME -> cursorX = 0;
-                case END -> cursorX = columns - 1;
             }
+            case ARROW_DOWN -> {
+                if (cursorY < content.size()) {
+                    cursorY++;
+                }
+            }
+            case ARROW_LEFT -> {
+                if (cursorX > 0) {
+                    cursorX--;
+                }
+            }
+            case ARROW_RIGHT -> {
+                if (cursorX < columns - 1) {
+                    cursorX++;
+                }
+            }
+            case HOME -> cursorX = 0;
+            case END -> cursorX = columns - 1;
+        }
     }
 
 
-
     public static boolean isWindows() {
-	   return System.getProperty("os.name").toLowerCase().contains("windows");
+        return System.getProperty("os.name").toLowerCase().contains("windows");
     }
 
 
 }
 
-record TerminalSize(int width, int height) {};
+record TerminalSize(int width, int height) {
+};
 
 
 interface Terminal {
     void enableRawMode();
-    void  disableRawMode();
+
+    void disableRawMode();
 
     TerminalSize getTerminalSize();
 }
@@ -245,63 +244,54 @@ class WindowsTerminal implements Terminal {
 
     @Override
     public void enableRawMode() {
-	   Pointer inHandle = Kernel32.INSTANCE.GetStdHandle(Kernel32.STD_INPUT_HANDLE);
-	   Pointer outHandle = Kernel32.INSTANCE.GetStdHandle(Kernel32.STD_OUTPUT_HANDLE);
+        Pointer inHandle = Kernel32.INSTANCE.GetStdHandle(Kernel32.STD_INPUT_HANDLE);
 
-	   inMode = new IntByReference();
-	   Kernel32.INSTANCE.GetConsoleMode(inHandle, inMode);
+        inMode = new IntByReference();
+        Kernel32.INSTANCE.GetConsoleMode(inHandle, inMode);
 
-	   int bla;
-	   bla = inMode.getValue() & ~(
-			 Kernel32.ENABLE_ECHO_INPUT
-				    | Kernel32.ENABLE_LINE_INPUT
-				    | Kernel32.ENABLE_MOUSE_INPUT
-				    | Kernel32.ENABLE_WINDOW_INPUT
-				    | Kernel32.ENABLE_PROCESSED_INPUT
+        int inMode;
+        inMode = this.inMode.getValue() & ~(
+                Kernel32.ENABLE_ECHO_INPUT
+                        | Kernel32.ENABLE_LINE_INPUT
+                        | Kernel32.ENABLE_MOUSE_INPUT
+                        | Kernel32.ENABLE_WINDOW_INPUT
+                        | Kernel32.ENABLE_PROCESSED_INPUT
+        );
+
+        inMode |= Kernel32.ENABLE_VIRTUAL_TERMINAL_INPUT;
 
 
-	   );
+        Kernel32.INSTANCE.SetConsoleMode(inHandle, inMode);
 
+        Pointer outHandle = Kernel32.INSTANCE.GetStdHandle(Kernel32.STD_OUTPUT_HANDLE);
+        outMode = new IntByReference();
+        Kernel32.INSTANCE.GetConsoleMode(outHandle, outMode);
 
-	   bla  |= Kernel32.ENABLE_EXTENDED_FLAGS;
-	   bla  |= Kernel32.ENABLE_INSERT_MODE;
-	   bla  |= Kernel32.ENABLE_QUICK_EDIT_MODE;
+        int outMode = this.outMode.getValue();
+        outMode |= Kernel32.ENABLE_VIRTUAL_TERMINAL_PROCESSING;
+        outMode |= Kernel32.ENABLE_PROCESSED_OUTPUT;
+        Kernel32.INSTANCE.SetConsoleMode(outHandle, outMode);
 
-	   bla  |= Kernel32.ENABLE_VIRTUAL_TERMINAL_INPUT;
-	   /*& (
-			 Kernel32.ENABLE_EXTENDED_FLAGS
-				    | Kernel32.ENABLE_INSERT_MODE
-				    | Kernel32.ENABLE_QUICK_EDIT_MODE
-				    |
-	   )*/
-
-	   Kernel32.INSTANCE.SetConsoleMode(inHandle, bla);
-
-	   /*outMode = new IntByReference();
-	   Kernel32.INSTANCE.GetConsoleMode(inHandle, outMode);
-	   Kernel32.INSTANCE.SetConsoleMode(inHandle, outMode.getValue() | (Kernel32.ENABLE_VIRTUAL_TERMINAL_PROCESSING | Kernel32.DISABLE_NEWLINE_AUTO_RETURN));*/
     }
-
 
 
     @Override
     public void disableRawMode() {
-	   Pointer inHandle = Kernel32.INSTANCE.GetStdHandle(Kernel32.STD_INPUT_HANDLE);
-	   Kernel32.INSTANCE.SetConsoleMode(inHandle,  inMode.getValue());
+        Pointer inHandle = Kernel32.INSTANCE.GetStdHandle(Kernel32.STD_INPUT_HANDLE);
+        Kernel32.INSTANCE.SetConsoleMode(inHandle, inMode.getValue());
 
-	   /*Pointer outHandle = Kernel32.INSTANCE.GetStdHandle(Kernel32.STD_OUTPUT_HANDLE);
-	   Kernel32.INSTANCE.SetConsoleMode(outHandle,  outMode.getValue());*/
+        Pointer outHandle = Kernel32.INSTANCE.GetStdHandle(Kernel32.STD_OUTPUT_HANDLE);
+        Kernel32.INSTANCE.SetConsoleMode(outHandle, outMode.getValue());
     }
-
 
 
     @Override
     public TerminalSize getTerminalSize() {
-	   final Kernel32.CONSOLE_SCREEN_BUFFER_INFO info = new Kernel32.CONSOLE_SCREEN_BUFFER_INFO();
-	   final Kernel32 instance = Kernel32.INSTANCE;
-	   final Pointer handle = Kernel32.INSTANCE.GetStdHandle(Kernel32.STD_OUTPUT_HANDLE);
-	   instance.GetConsoleScreenBufferInfo(handle, info);
-	   return new TerminalSize(info.windowWidth(), info.windowHeight());
+        final Kernel32.CONSOLE_SCREEN_BUFFER_INFO info = new Kernel32.CONSOLE_SCREEN_BUFFER_INFO();
+        final Kernel32 instance = Kernel32.INSTANCE;
+        final Pointer handle = Kernel32.INSTANCE.GetStdHandle(Kernel32.STD_OUTPUT_HANDLE);
+        instance.GetConsoleScreenBufferInfo(handle, info);
+        return new TerminalSize(info.windowWidth(), info.windowHeight());
     }
 }
 
@@ -312,42 +302,42 @@ class UnixTerminal implements Terminal {
 
     @Override
     public void enableRawMode() {
-	   LibC.Termios termios = new LibC.Termios();
-	   int rc = LibC.INSTANCE.tcgetattr(LibC.SYSTEM_OUT_FD, termios);
+        LibC.Termios termios = new LibC.Termios();
+        int rc = LibC.INSTANCE.tcgetattr(LibC.SYSTEM_OUT_FD, termios);
 
-	   if (rc != 0) {
-		  System.err.println("There was a problem calling tcgetattr");
-		  System.exit(rc);
-	   }
+        if (rc != 0) {
+            System.err.println("There was a problem calling tcgetattr");
+            System.exit(rc);
+        }
 
-	   originalAttributes = LibC.Termios.of(termios);
+        originalAttributes = LibC.Termios.of(termios);
 
-	   termios.c_lflag &= ~(LibC.ECHO | LibC.ICANON | LibC.IEXTEN | LibC.ISIG);
-	   termios.c_iflag &= ~(LibC.IXON | LibC.ICRNL);
-	   termios.c_oflag &= ~(LibC.OPOST);
+        termios.c_lflag &= ~(LibC.ECHO | LibC.ICANON | LibC.IEXTEN | LibC.ISIG);
+        termios.c_iflag &= ~(LibC.IXON | LibC.ICRNL);
+        termios.c_oflag &= ~(LibC.OPOST);
 
        /* termios.c_cc[LibC.VMIN] = 0;
         termios.c_cc[LibC.VTIME] = 1;*/
 
-	   LibC.INSTANCE.tcsetattr(LibC.SYSTEM_OUT_FD, LibC.TCSAFLUSH, termios);
+        LibC.INSTANCE.tcsetattr(LibC.SYSTEM_OUT_FD, LibC.TCSAFLUSH, termios);
     }
 
     @Override
     public void disableRawMode() {
-	   LibC.INSTANCE.tcsetattr(LibC.SYSTEM_OUT_FD, LibC.TCSAFLUSH, originalAttributes);
+        LibC.INSTANCE.tcsetattr(LibC.SYSTEM_OUT_FD, LibC.TCSAFLUSH, originalAttributes);
     }
 
     @Override
     public TerminalSize getTerminalSize() {
-	   final LibC.Winsize winsize = new LibC.Winsize();
-	   final int rc = LibC.INSTANCE.ioctl(LibC.SYSTEM_OUT_FD, LibC.TIOCGWINSZ, winsize);
+        final LibC.Winsize winsize = new LibC.Winsize();
+        final int rc = LibC.INSTANCE.ioctl(LibC.SYSTEM_OUT_FD, LibC.TIOCGWINSZ, winsize);
 
-	   if (rc != 0) {
-		  System.err.println("ioctl failed with return code[={}]" + rc);
-		  System.exit(1);
-	   }
+        if (rc != 0) {
+            System.err.println("ioctl failed with return code[={}]" + rc);
+            System.exit(1);
+        }
 
-	   return new TerminalSize(winsize.ws_col, winsize.ws_row);
+        return new TerminalSize(winsize.ws_col, winsize.ws_row);
     }
 }
 
@@ -364,7 +354,6 @@ interface LibC extends Library {
     class Winsize extends Structure {
         public short ws_row, ws_col, ws_xpixel, ws_ypixel;
     }
-
 
 
     @Structure.FieldOrder(value = {"c_iflag", "c_oflag", "c_cflag", "c_lflag", "c_cc"})
@@ -402,48 +391,47 @@ interface LibC extends Library {
     int tcgetattr(int fd, Termios termios);
 
     int tcsetattr(int fd, int optional_actions,
-                     Termios termios);
+                  Termios termios);
 
     int ioctl(int fd, int opt, Winsize winsize);
 
 }
 
-    /**/
+/**/
 
 interface Kernel32 extends StdCallLibrary {
 
     Kernel32 INSTANCE = Native.load("kernel32", Kernel32.class);
 
     /**
-	* The CryptUIDlgSelectCertificateFromStore function displays a dialog box
-	* that allows the selection of a certificate from a specified store.
-	*
-	* @param hCertStore Handle of the certificate store to be searched.
-	* @param hwnd Handle of the window for the display. If NULL,
-	*                          defaults to the desktop window.
-	* @param pwszTitle String used as the title of the dialog box. If
-	*                          NULL, the default title, "Select Certificate,"
-	*                          is used.
-	* @param pwszDisplayString Text statement in the selection dialog box. If
-	*                          NULL, the default phrase, "Select a certificate
-	*                          you want to use," is used.
-	* @param dwDontUseColumn Flags that can be combined to exclude columns of
-	*                          the display.
-	* @param dwFlags Currently not used and should be set to 0.
-	* @param pvReserved Reserved for future use.
-	*
-	* @return Returns a pointer to the selected certificate context. If no
-	*         certificate was selected, NULL is returned. When you have
-	*         finished using the certificate, free the certificate context by
-	*         calling the CertFreeCertificateContext function.
-	*/
-    public static final int ENABLE_VIRTUAL_TERMINAL_PROCESSING = 0x0004,    ENABLE_PROCESSED_OUTPUT = 0x0002;
+     * The CryptUIDlgSelectCertificateFromStore function displays a dialog box
+     * that allows the selection of a certificate from a specified store.
+     *
+     * @param hCertStore Handle of the certificate store to be searched.
+     * @param hwnd Handle of the window for the display. If NULL,
+     * defaults to the desktop window.
+     * @param pwszTitle String used as the title of the dialog box. If
+     * NULL, the default title, "Select Certificate,"
+     * is used.
+     * @param pwszDisplayString Text statement in the selection dialog box. If
+     * NULL, the default phrase, "Select a certificate
+     * you want to use," is used.
+     * @param dwDontUseColumn Flags that can be combined to exclude columns of
+     * the display.
+     * @param dwFlags Currently not used and should be set to 0.
+     * @param pvReserved Reserved for future use.
+     * @return Returns a pointer to the selected certificate context. If no
+     * certificate was selected, NULL is returned. When you have
+     * finished using the certificate, free the certificate context by
+     * calling the CertFreeCertificateContext function.
+     */
+    public static final int ENABLE_VIRTUAL_TERMINAL_PROCESSING = 0x0004, ENABLE_PROCESSED_OUTPUT = 0x0001;
 
     int ENABLE_LINE_INPUT = 0x0002;
     int ENABLE_PROCESSED_INPUT = 0x0001;
     int ENABLE_ECHO_INPUT = 0x0004;
     int ENABLE_MOUSE_INPUT = 0x0010;
-    int ENABLE_WINDOW_INPUT =0x0008 ;
+    int ENABLE_WINDOW_INPUT = 0x0008;
     int ENABLE_QUICK_EDIT_MODE = 0x0040;
     int ENABLE_INSERT_MODE = 0x0020;
 
@@ -453,25 +441,25 @@ interface Kernel32 extends StdCallLibrary {
 
 
     int STD_OUTPUT_HANDLE = -11;
-    int STD_INPUT_HANDLE =  -10;
+    int STD_INPUT_HANDLE = -10;
     int DISABLE_NEWLINE_AUTO_RETURN = 0x0008;
 
     // BOOL WINAPI GetConsoleScreenBufferInfo(
     // _In_   HANDLE hConsoleOutput,
     // _Out_  PCONSOLE_SCREEN_BUFFER_INFO lpConsoleScreenBufferInfo);
     void GetConsoleScreenBufferInfo(
-		  Pointer in_hConsoleOutput,
-		  CONSOLE_SCREEN_BUFFER_INFO out_lpConsoleScreenBufferInfo)
-		  throws LastErrorException;
+            Pointer in_hConsoleOutput,
+            CONSOLE_SCREEN_BUFFER_INFO out_lpConsoleScreenBufferInfo)
+            throws LastErrorException;
 
     void GetConsoleMode(
-		  Pointer in_hConsoleOutput,
-		  IntByReference out_lpMode)
-		  throws LastErrorException;
+            Pointer in_hConsoleOutput,
+            IntByReference out_lpMode)
+            throws LastErrorException;
 
     void SetConsoleMode(
-		  Pointer in_hConsoleOutput,
-		  int in_dwMode) throws LastErrorException;
+            Pointer in_hConsoleOutput,
+            int in_dwMode) throws LastErrorException;
 
     Pointer GetStdHandle(int nStdHandle);
 
@@ -485,28 +473,26 @@ interface Kernel32 extends StdCallLibrary {
     class CONSOLE_SCREEN_BUFFER_INFO extends Structure {
 
 
+        public COORD dwSize;
+        public COORD dwCursorPosition;
+        public short wAttributes;
+        public SMALL_RECT srWindow;
+        public COORD dwMaximumWindowSize;
 
+        private static String[] fieldOrder = {"dwSize", "dwCursorPosition", "wAttributes", "srWindow", "dwMaximumWindowSize"};
 
-	   public COORD dwSize;
-	   public COORD dwCursorPosition;
-	   public short      wAttributes;
-	   public SMALL_RECT srWindow;
-	   public COORD dwMaximumWindowSize;
+        @Override
+        protected java.util.List<String> getFieldOrder() {
+            return java.util.Arrays.asList(fieldOrder);
+        }
 
-	   private static String[] fieldOrder = { "dwSize", "dwCursorPosition", "wAttributes", "srWindow", "dwMaximumWindowSize" };
+        public int windowWidth() {
+            return this.srWindow.width() + 1;
+        }
 
-	   @Override
-	   protected java.util.List<String> getFieldOrder() {
-		  return java.util.Arrays.asList(fieldOrder);
-	   }
-
-	   public int windowWidth() {
-		  return this.srWindow.width() + 1;
-	   }
-
-	   public int windowHeight() {
-		  return this.srWindow.height() + 1;
-	   }
+        public int windowHeight() {
+            return this.srWindow.height() + 1;
+        }
     }
 
     // typedef struct _COORD {
@@ -514,23 +500,23 @@ interface Kernel32 extends StdCallLibrary {
     //    SHORT Y;
     //  } COORD, *PCOORD;
     class COORD extends Structure implements Structure.ByValue {
-	   public COORD() {
-	   }
+        public COORD() {
+        }
 
-	   public COORD(short X, short Y) {
-		  this.X = X;
-		  this.Y = Y;
-	   }
+        public COORD(short X, short Y) {
+            this.X = X;
+            this.Y = Y;
+        }
 
-	   public short X;
-	   public short Y;
+        public short X;
+        public short Y;
 
-	   private static String[] fieldOrder = { "X", "Y" };
+        private static String[] fieldOrder = {"X", "Y"};
 
-	   @Override
-	   protected java.util.List<String> getFieldOrder() {
-		  return java.util.Arrays.asList(fieldOrder);
-	   }
+        @Override
+        protected java.util.List<String> getFieldOrder() {
+            return java.util.Arrays.asList(fieldOrder);
+        }
     }
 
     // typedef struct _SMALL_RECT {
@@ -540,42 +526,41 @@ interface Kernel32 extends StdCallLibrary {
     //    SHORT Bottom;
     //  } SMALL_RECT;
     class SMALL_RECT extends Structure {
-	   public SMALL_RECT() {
-	   }
+        public SMALL_RECT() {
+        }
 
-	   public SMALL_RECT(SMALL_RECT org) {
-		  this(org.Top, org.Left, org.Bottom, org.Right);
-	   }
+        public SMALL_RECT(SMALL_RECT org) {
+            this(org.Top, org.Left, org.Bottom, org.Right);
+        }
 
-	   public SMALL_RECT(short Top, short Left, short Bottom, short Right) {
-		  this.Top = Top;
-		  this.Left = Left;
-		  this.Bottom = Bottom;
-		  this.Right = Right;
-	   }
+        public SMALL_RECT(short Top, short Left, short Bottom, short Right) {
+            this.Top = Top;
+            this.Left = Left;
+            this.Bottom = Bottom;
+            this.Right = Right;
+        }
 
-	   public short Left;
-	   public short Top;
-	   public short Right;
-	   public short Bottom;
+        public short Left;
+        public short Top;
+        public short Right;
+        public short Bottom;
 
-	   private static String[] fieldOrder = { "Left", "Top", "Right", "Bottom" };
+        private static String[] fieldOrder = {"Left", "Top", "Right", "Bottom"};
 
-	   @Override
-	   protected java.util.List<String> getFieldOrder() {
-		  return java.util.Arrays.asList(fieldOrder);
-	   }
+        @Override
+        protected java.util.List<String> getFieldOrder() {
+            return java.util.Arrays.asList(fieldOrder);
+        }
 
-	   public short width() {
-		  return (short)(this.Right - this.Left);
-	   }
+        public short width() {
+            return (short) (this.Right - this.Left);
+        }
 
-	   public short height() {
-		  return (short)(this.Bottom - this.Top);
-	   }
+        public short height() {
+            return (short) (this.Bottom - this.Top);
+        }
 
     }
-
 
 
 }
