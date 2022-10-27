@@ -8,6 +8,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Locale;
 import java.util.stream.Stream;
 
 public class Viewer {
@@ -389,7 +390,7 @@ interface LibC extends Library {
 
 
     default int tiocgwinsz() {
-        String os = System.getProperty("os.name", "generic");
+        String os = System.getProperty("os.name", "generic").toLowerCase(Locale.ENGLISH);
 
         if (os.contains("mac") || os.contains("darwin") ) {
             return 0x40087468;
