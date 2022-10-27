@@ -330,7 +330,7 @@ class UnixTerminal implements Terminal {
     @Override
     public TerminalSize getTerminalSize() {
         final LibC.Winsize winsize = new LibC.Winsize();
-        final int rc = LibC.INSTANCE.ioctl(LibC.SYSTEM_OUT_FD, LibC.TIOCGWINSZ, winsize);
+        final int rc = LibC.INSTANCE.ioctl(LibC.SYSTEM_OUT_FD, LibC.INSTANCE.tiocgwinsz(), winsize);
 
         if (rc != 0) {
             System.err.println("ioctl failed with return code[={}]" + rc);
@@ -345,7 +345,7 @@ interface LibC extends Library {
 
     int SYSTEM_OUT_FD = 0;
     int ISIG = 1, ICANON = 2, ECHO = 10, TCSAFLUSH = 2,
-            IXON = 2000, ICRNL = 400, IEXTEN = 100000, OPOST = 1, VMIN = 6, VTIME = 5, TIOCGWINSZ = 0x5413;
+            IXON = 2000, ICRNL = 400, IEXTEN = 100000, OPOST = 1, VMIN = 6, VTIME = 5;
 
     // we're loading the C standard library for POSIX systems
     LibC INSTANCE = Native.load("c", LibC.class);
@@ -387,6 +387,17 @@ interface LibC extends Library {
         }
     }
 
+
+    default int tiocgwinsz() {
+        String os = System.getProperty("os.name", "generic");
+
+        if (os.contains("mac") || os.contains("darwin") ) {
+            return 0x40087468;
+        }
+        else {
+            return 0x5413;
+        }
+    }
 
     int tcgetattr(int fd, Termios termios);
 
