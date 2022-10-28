@@ -177,7 +177,7 @@ public class Viewer {
         if (key == 'q') {
             exit();
         } else {
-            System.out.print((char) + key + " ->  (" + key + ")\r\n");
+            System.out.print((char) key + " ->  (" + key + ")\r\n");
         }
         /*else if (List.of(ARROW_UP, ARROW_DOWN, ARROW_LEFT, ARROW_RIGHT, HOME, END).contains(key)) {
             moveCursor(key);
