@@ -78,6 +78,7 @@ public class Viewer {
         LibC.Winsize windowSize = getWindowSize();
         columns = windowSize.ws_col;
         rows = windowSize.ws_row - 1;
+        System.out.println("windowSize = " + windowSize);
     }
 
     private static void refreshScreen() {
