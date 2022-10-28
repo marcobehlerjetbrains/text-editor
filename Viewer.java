@@ -288,7 +288,7 @@ interface LibC extends Library {
     class Termios extends Structure {
         public int c_iflag, c_oflag, c_cflag, c_lflag;
 
-        public byte[] c_cc = new byte[19];
+        public byte[] c_cc = new byte[20];
 
         public Termios() {
         }
