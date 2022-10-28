@@ -42,8 +42,8 @@ public class Viewer {
         initEditor();
 
         while (true){
-            scroll();
-            refreshScreen();
+      /*      scroll();
+            refreshScreen();*/
             int key = readKey();
             handleKey(key);
         }
@@ -121,7 +121,8 @@ public class Viewer {
 
     private static int readKey() throws IOException {
         int key = System.in.read();
-        if (key != '\033') {
+        return key;
+        /*if (key != '\033') {
             return key;
         }
 
@@ -169,16 +170,18 @@ public class Viewer {
                 case 'F' -> END;
                 default -> yetAnotherKey;
             };
-        }
+        }*/
     }
 
     private static void handleKey(int key) {
         if (key == 'q') {
             exit();
+        } else {
+            System.out.print((char) + key + " ->  (" + key + ")\r\n");
         }
-        else if (List.of(ARROW_UP, ARROW_DOWN, ARROW_LEFT, ARROW_RIGHT, HOME, END).contains(key)) {
+        /*else if (List.of(ARROW_UP, ARROW_DOWN, ARROW_LEFT, ARROW_RIGHT, HOME, END).contains(key)) {
             moveCursor(key);
-        }
+        }*/
         /*else {
             System.out.print((char) + key + " -> (" + key + ")\r\n");
         }*/
