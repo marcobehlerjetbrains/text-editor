@@ -290,7 +290,7 @@ interface LibC extends Library {
 
     @Structure.FieldOrder(value = {"c_iflag", "c_oflag", "c_cflag", "c_lflag", "c_cc"})
     class Termios extends Structure {
-        public int c_iflag, c_oflag, c_cflag, c_lflag;
+        public long c_iflag, c_oflag, c_cflag, c_lflag;
 
         public byte[] c_cc = new byte[20];
 
