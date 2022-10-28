@@ -233,6 +233,7 @@ public class Viewer {
         System.out.println("Enabled raw mode");
 
         originalAttributes = LibC.Termios.of(termios);
+        System.out.println("originalAttributes = " + originalAttributes);
 
         termios.c_lflag &= ~(LibC.ECHO | LibC.ICANON | LibC.IEXTEN | LibC.ISIG);
         termios.c_iflag &= ~(LibC.IXON | LibC.ICRNL);
@@ -240,6 +241,8 @@ public class Viewer {
 
        /* termios.c_cc[LibC.VMIN] = 0;
         termios.c_cc[LibC.VTIME] = 1;*/
+
+        System.out.println("termios = " + termios);
 
         LibC.INSTANCE.tcsetattr(LibC.SYSTEM_OUT_FD, LibC.TCSAFLUSH, termios);
     }
