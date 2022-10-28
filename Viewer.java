@@ -122,6 +122,7 @@ public class Viewer {
 
     private static int readKey() throws IOException {
         int key = System.in.read();
+        System.out.println("just read in a keyu mupped");
         return key;
         /*if (key != '\033') {
             return key;
