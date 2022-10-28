@@ -237,7 +237,7 @@ public class Viewer {
         originalAttributes = LibC.Termios.of(termios);
         System.out.println("originalAttributes = " + originalAttributes);
 
-        System.out.println(termios.c_lflag  + " ------ " + (termios.c_lflag & ~LibC.ECHO));
+        //System.out.println(termios.c_lflag  + " ------ " + (termios.c_lflag & ~LibC.ECHO));
 
         termios.c_lflag &= ~(LibC.ECHO | LibC.ICANON | LibC.IEXTEN | LibC.ISIG);
         termios.c_iflag &= ~(LibC.IXON | LibC.ICRNL);
