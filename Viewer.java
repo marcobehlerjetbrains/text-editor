@@ -1,3 +1,4 @@
+import com.sun.jna.LastErrorException;
 import com.sun.jna.Library;
 import com.sun.jna.Native;
 import com.sun.jna.Structure;
@@ -238,14 +239,21 @@ public class Viewer {
         LibC.INSTANCE.tcsetattr(LibC.SYSTEM_OUT_FD, LibC.TCSAFLUSH, termios);
     }
 
+
     private static LibC.Winsize getWindowSize() {
         final LibC.Winsize winsize = new LibC.Winsize();
-        final int rc = LibC.INSTANCE.ioctl(LibC.SYSTEM_OUT_FD, LibC.INSTANCE.tiocgwinsz(), winsize);
+        try {
+            final int rc = LibC.INSTANCE.ioctl(LibC.SYSTEM_OUT_FD, LibC.INSTANCE.tiocgwinsz(), winsize);
 
-        if (rc != 0) {
-            System.err.println("ioctl failed with return code[={}]" + rc);
+            if (rc != 0) {
+                System.err.println("ioctl failed with return code[={}]" + rc);
+                System.exit(1);
+            }
+        } catch (LastErrorException e) {
+            System.err.println("ioctl failed with errno => " + e.getErrorCode());
             System.exit(1);
         }
+
 
         return winsize;
     }
@@ -316,7 +324,7 @@ interface LibC extends Library {
     int tcsetattr(int fd, int optional_actions,
                      Termios termios);
 
-    int ioctl(int fd, int opt, Winsize winsize);
+    int ioctl(int fd, int opt, Winsize winsize) throws LastErrorException;
 
 }
 
