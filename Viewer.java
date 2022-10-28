@@ -230,6 +230,8 @@ public class Viewer {
             System.exit(rc);
         }
 
+        System.out.println("Enabled raw mode");
+
         originalAttributes = LibC.Termios.of(termios);
 
         termios.c_lflag &= ~(LibC.ECHO | LibC.ICANON | LibC.IEXTEN | LibC.ISIG);
