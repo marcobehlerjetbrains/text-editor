@@ -2,7 +2,6 @@ import com.sun.jna.*;
 import com.sun.jna.ptr.IntByReference;
 import com.sun.jna.win32.StdCallLibrary;
 
-import javax.swing.tree.AbstractLayoutCache;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -23,7 +22,7 @@ public class Viewer {
     private static int rows = 10;
     private static int columns = 10;
 
-    private static int cursorX = 0, cursorY = 0, offsetY = 0;
+    private static int cursorX = 0, cursorY = 0, offsetY = 0, offsetX = 0;
 
     private static List<String> content = List.of();
 
@@ -60,17 +59,18 @@ public class Viewer {
     }
 
     private static void openFile(String[] args) {
-        if (args.length == 1) {
-            String filename = args[0];
-            Path path = Path.of(filename);
-            if (Files.exists(path)) {
-                try (Stream<String> stream = Files.lines(path)) {
-                    content = stream.toList();
-                } catch (IOException e) {
-                    // TODO
-                }
-            }
+        if (args.length != 1) {
+            return;
+        }
 
+        String filename = args[0];
+        Path path = Path.of(filename);
+        if (Files.exists(path) && Files.isRegularFile(path)) {
+            try (Stream<String> stream = Files.lines(path)) {
+                content = stream.toList();
+            } catch (IOException e) {
+                // TODO
+            }
         }
     }
 
@@ -99,7 +99,7 @@ public class Viewer {
     }
 
     private static void drawStatusBar(StringBuilder builder) {
-        String statusMessage = "Rows: " + rows + "X:" + cursorX + " Y: " + cursorY;
+        String statusMessage = "Rows: " + rows + "X: " + cursorX + " Y: " + cursorY + " Offset Y: " + offsetY;
         builder.append("\033[7m")
                 .append(statusMessage)
                 .append(" ".repeat(Math.max(0, columns - statusMessage.length())))
@@ -112,7 +112,15 @@ public class Viewer {
             if (fileI >= content.size()) {
                 builder.append("~");
             } else {
-                builder.append(content.get(fileI));
+                String line = content.get(fileI);
+                int length = line.length() - offsetX;
+                if (length < 0) {
+                    length = 0;
+                }
+                if (length > columns) {
+                    length = columns;
+                }
+                builder.append(line, offsetX, offsetX + length);
             }
             builder.append("\033[K\r\n");
         }
@@ -176,7 +184,7 @@ public class Viewer {
     private static void handleKey(int key) {
         if (key == 'q') {
             exit();
-        } else if (List.of(ARROW_UP, ARROW_DOWN, ARROW_LEFT, ARROW_RIGHT, HOME, END).contains(key)) {
+        } else if (List.of(ARROW_UP, ARROW_DOWN, ARROW_LEFT, ARROW_RIGHT, HOME, END, PAGE_UP, PAGE_DOWN).contains(key)) {
             moveCursor(key);
         }
         /*else {
@@ -192,6 +200,9 @@ public class Viewer {
     }
 
     private static void moveCursor(int key) {
+
+        String line = cursorY >= content.size() ? null : content.get(cursorY);
+
         switch (key) {
             case ARROW_UP -> {
                 if (cursorY > 0) {
@@ -203,18 +214,48 @@ public class Viewer {
                     cursorY++;
                 }
             }
+            // wrap cursor around
             case ARROW_LEFT -> {
-                if (cursorX > 0) {
+                if (cursorX != 0) {
                     cursorX--;
+                } else if (cursorX == 0 && cursorY > 0) {
+                    cursorY--;
+                    cursorX = content.get(cursorY).length();
                 }
             }
             case ARROW_RIGHT -> {
-                if (cursorX < columns - 1) {
+                if (line != null && cursorX < line.length()) {
                     cursorX++;
+                } else if (line != null && cursorX == line.length()) {
+                    cursorY++;
+                    cursorX = 0;
+                }
+            }
+            case PAGE_UP, PAGE_DOWN -> {
+                if (key == PAGE_UP) {
+                    cursorY = offsetY;
+                } else if (key == PAGE_DOWN) {
+                    cursorY = offsetY + rows - 1;
+                    if (cursorY > content.size()) cursorY = rows;
+                }
+
+                for (int i = 0; i < rows; i++) {
+                    moveCursor(key == PAGE_UP ? ARROW_UP : ARROW_DOWN);
                 }
             }
             case HOME -> cursorX = 0;
-            case END -> cursorX = columns - 1;
+            case END -> {
+                if (cursorY < rows) {
+                    cursorX = content.get(cursorY).length();
+                }
+            }
+        }
+
+
+        // Anchor at the end of the line moving up and down
+        int lineLength = cursorY >= rows ? 0 : content.get(cursorY).length();
+        if (cursorX > lineLength) {
+            cursorX = lineLength;
         }
     }
 
@@ -392,10 +433,9 @@ interface LibC extends Library {
     default int tiocgwinsz() {
         String os = System.getProperty("os.name", "generic").toLowerCase(Locale.ENGLISH);
 
-        if (os.contains("mac") || os.contains("darwin") ) {
+        if (os.contains("mac") || os.contains("darwin")) {
             return 0x40087468;
-        }
-        else {
+        } else {
             return 0x5413;
         }
     }
