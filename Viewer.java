@@ -26,7 +26,7 @@ public class Viewer {
     private static int rows = 10;
     private static int columns = 10;
 
-    private static int cursorX = 0, cursorY = 0, offsetY = 0;
+    private static int cursorX = 0, cursorY = 0, offsetY = 0, offsetX = 0;
 
     private static List<String> content = List.of();
 
@@ -56,6 +56,13 @@ public class Viewer {
         }
         else if (cursorY < offsetY) {
             offsetY = cursorY;
+        }
+
+        if (cursorX >= columns + offsetX) {
+            offsetX = cursorX - columns + 1;
+        }
+        else if (cursorX < offsetX) {
+            offsetX = cursorX;
         }
     }
 
@@ -95,7 +102,7 @@ public class Viewer {
     }
 
     private static void drawCursor(StringBuilder builder) {
-        builder.append(String.format("\033[%d;%dH", cursorY - offsetY + 1, cursorX + 1));
+        builder.append(String.format("\033[%d;%dH", cursorY - offsetY + 1, cursorX -offsetX + 1));
     }
 
     private static void drawStatusBar(StringBuilder builder) {
@@ -112,7 +119,17 @@ public class Viewer {
             if (fileI >= content.size()) {
                 builder.append("~");
             } else {
-                builder.append(content.get(fileI));
+                String currentLine = content.get(fileI);
+                int lengthToDraw = currentLine.length() - offsetX;
+                if (lengthToDraw < 0) {
+                    lengthToDraw = 0;
+                }
+                if (lengthToDraw > columns) {
+                    lengthToDraw = columns;
+                }
+                if (lengthToDraw > 0) {
+                    builder.append(currentLine, offsetX, offsetX + lengthToDraw);
+                }
             }
             builder.append("\033[K\r\n");
         }
@@ -176,7 +193,7 @@ public class Viewer {
         if (key == 'q') {
             exit();
         }
-        else if (List.of(ARROW_UP, ARROW_DOWN, ARROW_LEFT, ARROW_RIGHT, HOME, END).contains(key)) {
+        else if (List.of(ARROW_UP, ARROW_DOWN, ARROW_LEFT, ARROW_RIGHT, HOME, END, PAGE_UP, PAGE_DOWN).contains(key)) {
             moveCursor(key);
         }
         /*else {
@@ -208,13 +225,36 @@ public class Viewer {
                         cursorX--;
                     }
                 } case ARROW_RIGHT -> {
-                    if (cursorX < columns - 1) {
+                    if (cursorX < content.get(cursorY).length() - 1) {
                         cursorX++;
+                    }
+                } case PAGE_UP, PAGE_DOWN -> {
+                    if (key == PAGE_UP) {
+                        moveCursorToTop();
+                    } else if (key == PAGE_DOWN) {
+                        moveCursorToBottom();
+                    }
+                    for (int i = 0; i < rows; i++) {
+                        moveCursor(key == PAGE_UP ? ARROW_UP : ARROW_DOWN);
                     }
                 }
                 case HOME -> cursorX = 0;
-                case END -> cursorX = columns - 1;
+                case END -> {
+                    if (cursorY < content.size()) {
+                        cursorX = content.get(cursorY).length();
+                    }
+                }
             }
+    }
+
+
+
+    private static void moveCursorToTop() {
+        cursorY = offsetY;
+    }
+    private static void moveCursorToBottom() {
+        cursorY = offsetY + rows - 1;
+        if (cursorY > content.size()) cursorY = content.size();
     }
 
 
