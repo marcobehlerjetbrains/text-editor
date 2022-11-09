@@ -4,6 +4,8 @@
       <root url="jar://$PROJECT_DIR$/jna-5.12.1.jar!/" />
     </CLASSES>
     <JAVADOC />
-    <SOURCES />
+    <SOURCES>
+      <root url="jar://$USER_HOME$/.ideaLibSources/jna-5.12.1-sources.jar!/" />
+    </SOURCES>
   </library>
 </component>
