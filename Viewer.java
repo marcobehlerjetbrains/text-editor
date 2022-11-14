@@ -296,19 +296,13 @@ public class Viewer {
 
     private static LibC.Winsize getWindowSize() {
         final LibC.Winsize winsize = new LibC.Winsize();
-        try {
-            final int rc = LibC.INSTANCE.ioctl(LibC.SYSTEM_OUT_FD, LibC.INSTANCE.TIOCGWINSZ, winsize);
 
-            if (rc != 0) {
-                System.err.println("ioctl failed with return code[={}]" + rc);
-                System.exit(1);
-            }
-        } catch (LastErrorException e) {
-            System.err.println("ioctl failed with errno => " + e.getErrorCode());
+        final int rc = LibC.INSTANCE.ioctl(LibC.SYSTEM_OUT_FD, LibC.INSTANCE.TIOCGWINSZ, winsize);
+
+        if (rc != 0) {
+            System.err.println("ioctl failed with return code[={}]" + rc);
             System.exit(1);
         }
-
-
         return winsize;
     }
 
@@ -359,9 +353,6 @@ interface LibC extends Library {
                     '}';
         }
     }
-
-
-
 
 
     int tcgetattr(int fd, Termios termios);
