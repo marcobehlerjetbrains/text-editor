@@ -2,13 +2,11 @@ import com.sun.jna.*;
 import com.sun.jna.ptr.IntByReference;
 import com.sun.jna.win32.StdCallLibrary;
 
-import java.awt.*;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Locale;
 import java.util.stream.Stream;
 
 public class Viewer {
@@ -20,7 +18,7 @@ public class Viewer {
             PAGE_UP = 1006,
             PAGE_DOWN = 1007,
             DEL = 1008;
-  
+
     private static int rows = 10;
     private static int columns = 10;
 
@@ -31,7 +29,6 @@ public class Viewer {
                     Platform.isMac() ? new MacOsTerminal() : new UnixTerminal();
 
     private static List<String> content = List.of();
-
 
 
     public static void main(String[] args) throws IOException {
@@ -279,7 +276,6 @@ public class Viewer {
     }
 
 
-
 }
 
 interface Terminal {
@@ -293,7 +289,7 @@ interface Terminal {
 class UnixTerminal implements Terminal {
 
     private static LibC.Termios originalAttributes;
-    
+
     @Override
     public void enableRawMode() {
         LibC.Termios termios = new LibC.Termios();
@@ -720,7 +716,6 @@ class WindowsTerminal implements Terminal {
 
     }
 }
-
 
 
 record WindowSize(int rows, int columns) {
