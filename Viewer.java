@@ -29,6 +29,7 @@ public class Viewer {
                     Platform.isMac() ? new MacOsTerminal() : new UnixTerminal();
 
     private static List<String> content = List.of();
+    private static String statusMessage;
 
 
     public static void main(String[] args) throws IOException {
@@ -89,14 +90,14 @@ public class Viewer {
     private static void refreshScreen() {
         StringBuilder builder = new StringBuilder();
 
-        moveCursorToTopLeft(builder);
+        drawCusorInTopLeft(builder);
         drawContent(builder);
         drawStatusBar(builder);
         drawCursor(builder);
         System.out.print(builder);
     }
 
-    private static void moveCursorToTopLeft(StringBuilder builder) {
+    private static void drawCusorInTopLeft(StringBuilder builder) {
         builder.append("\033[H");
     }
 
@@ -104,11 +105,70 @@ public class Viewer {
         builder.append(String.format("\033[%d;%dH", cursorY - offsetY + 1, cursorX - offsetX + 1));
     }
 
+    public static void setStatusMessage(String message) {
+        statusMessage = message;
+    }
+
+    public static void resetStatusMessage() {
+        statusMessage = null;
+    }
+
+
+    public static void editorFind() {
+        String query = prompt("Search: %s (ESC to cancel)");
+        if (query == null) return;
+
+        for (int i = 0; i < content.size(); i++) {
+            String line = content.get(i);
+
+            int match = line.indexOf(query);
+
+            if (match != -1) {
+                cursorY = i;
+                cursorX = match;
+                offsetY = content.size();
+                return;
+            }
+        }
+
+    }
+
+    private static String prompt(String s) {
+        StringBuilder builder = new StringBuilder();
+
+        String message = s;
+
+        while (true) {
+            setStatusMessage(message);
+            refreshScreen();
+
+            int key;
+            try {
+                key = readKey();
+            } catch (IOException e) {
+                key = '\033';
+            }
+
+
+            if (key == '\033') {
+                resetStatusMessage();
+                return null;
+            } else if (key == 13) {
+                resetStatusMessage();
+                return builder.toString();
+            } else {
+                builder.append((char) key);
+                message = builder.toString();
+            }
+        }
+    }
+
     private static void drawStatusBar(StringBuilder builder) {
-        String statusMessage = "Rows: " + rows + "X:" + cursorX + " Y: " + cursorY;
+        String toDraw = statusMessage != null ? statusMessage : ("Rows: " + rows + "X:" + cursorX + " Y: " + cursorY);
+
         builder.append("\033[7m")
-                .append(statusMessage)
-                .append(" ".repeat(Math.max(0, columns - statusMessage.length())))
+                .append(toDraw)
+                .append(" ".repeat(Math.max(0, columns - toDraw.length())))
                 .append("\033[0m");
     }
 
@@ -196,6 +256,8 @@ public class Viewer {
     private static void handleKey(int key) {
         if (key == 'q') {
             exit();
+        } else if (key == '-') {
+            editorFind();
         } else if (List.of(ARROW_UP, ARROW_DOWN, ARROW_LEFT, ARROW_RIGHT, HOME, END, PAGE_UP, PAGE_DOWN).contains(key)) {
             moveCursor(key);
         }
@@ -511,6 +573,7 @@ class WindowsTerminal implements Terminal {
                         | Kernel32.ENABLE_LINE_INPUT
                         | Kernel32.ENABLE_MOUSE_INPUT
                         | Kernel32.ENABLE_WINDOW_INPUT
+                        | Kernel32.ENABLE_PROCESSED_INPUT
                         | Kernel32.ENABLE_PROCESSED_INPUT
         );
 
