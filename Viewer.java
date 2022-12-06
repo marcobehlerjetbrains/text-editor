@@ -7,6 +7,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.List;
+import java.util.function.BiConsumer;
+import java.util.function.Consumer;
 import java.util.stream.Stream;
 
 public class Viewer {
@@ -17,7 +19,11 @@ public class Viewer {
             END = 1005,
             PAGE_UP = 1006,
             PAGE_DOWN = 1007,
-            DEL = 1008;
+            DEL = 1008,
+
+            BACKSPACE = 127;
+
+
 
     private static int rows = 10;
     private static int columns = 10;
@@ -43,7 +49,7 @@ public class Viewer {
         initEditor();
 
         while (true) {
-            scroll();
+
             refreshScreen();
             int key = readKey();
             handleKey(key);
@@ -88,6 +94,7 @@ public class Viewer {
     }
 
     private static void refreshScreen() {
+        scroll();
         StringBuilder builder = new StringBuilder();
 
         drawCusorInTopLeft(builder);
@@ -114,26 +121,59 @@ public class Viewer {
     }
 
 
-    public static void editorFind() {
-        String query = prompt("Search: %s (ESC to cancel)");
-        if (query == null) return;
-
-        for (int i = 0; i < content.size(); i++) {
-            String line = content.get(i);
-
-            int match = line.indexOf(query);
-
-            if (match != -1) {
-                cursorY = i;
-                cursorX = match;
-                offsetY = content.size();
-                return;
-            }
-        }
-
+    public enum SearchDirection {
+        FORWARDS, BACKWARDS
     }
 
-    private static String prompt(String s) {
+    static int lastMatch = -1;
+
+    static SearchDirection searchDirection = SearchDirection.FORWARDS;
+
+
+    public static void editorFind() {
+        prompt("Search: %s (Use ESC/Arrows/Enter)", (query, key) -> {
+            if (query == null || query.isBlank()) {
+                lastMatch = -1;
+                searchDirection = SearchDirection.FORWARDS;
+                return;
+            }
+            if (key == ARROW_RIGHT || key == ARROW_DOWN ) {
+                searchDirection = SearchDirection.FORWARDS;
+            } else if (key == ARROW_LEFT || key == ARROW_UP) {
+                searchDirection = SearchDirection.BACKWARDS;
+            } else {
+                lastMatch = -1;
+                searchDirection = SearchDirection.FORWARDS;
+            }
+
+
+            if (lastMatch == -1) searchDirection = SearchDirection.FORWARDS;
+            int current = lastMatch;
+
+            for (int i = 0; i < content.size(); i++) {
+                current += searchDirection == SearchDirection.FORWARDS ? 1 : -1;
+                if (current == -1) {
+                    current = content.size() - 1;
+                } else if (current == content.size()) {
+                    current = 0;
+                }
+
+                String line = content.get(current);
+
+                int match = line.indexOf(query);
+
+                if (match != -1) {
+                    lastMatch = current;
+                    cursorY = current;
+                    cursorX = match;
+                    offsetY = content.size();
+                    return;
+                }
+            }
+        });
+    }
+
+    private static void prompt(String s, BiConsumer<String, Integer> callback) {
         StringBuilder builder = new StringBuilder();
 
         String message = s;
@@ -146,20 +186,30 @@ public class Viewer {
             try {
                 key = readKey();
             } catch (IOException e) {
+                e.printStackTrace();
                 key = '\033';
             }
 
-
-            if (key == '\033') {
+            if (key == DEL || key == ctrl_key('h') || key == BACKSPACE ) {
+                if (builder.length() > 0) {
+                    builder.deleteCharAt(builder.length() - 1);
+                    message = builder.toString();
+                }
+            }
+            else if (key == '\033') {  // escap
                 resetStatusMessage();
-                return null;
-            } else if (key == 13) {
+                callback.accept(builder.toString(), key);
+                return;
+            } else if (key == 13) { // user pressed enter
                 resetStatusMessage();
-                return builder.toString();
-            } else {
+                callback.accept(builder.toString(), key);
+                return;
+            } else if (!Character.isISOControl(key)  && key < 128){
                 builder.append((char) key);
                 message = builder.toString();
             }
+
+            callback.accept(builder.toString(), key);
         }
     }
 
@@ -253,10 +303,15 @@ public class Viewer {
         }
     }
 
+
+    public static int ctrl_key(int key) {
+        return key & 0x1f;
+    }
+
     private static void handleKey(int key) {
-        if (key == 'q') {
+        if (key == ctrl_key('q')) {
             exit();
-        } else if (key == '-') {
+        } else if (key == ctrl_key('f')) {
             editorFind();
         } else if (List.of(ARROW_UP, ARROW_DOWN, ARROW_LEFT, ARROW_RIGHT, HOME, END, PAGE_UP, PAGE_DOWN).contains(key)) {
             moveCursor(key);
