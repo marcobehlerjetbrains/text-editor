@@ -8,7 +8,6 @@ import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.List;
 import java.util.function.BiConsumer;
-import java.util.function.Consumer;
 import java.util.stream.Stream;
 
 public class Viewer {
@@ -116,7 +115,7 @@ public class Viewer {
         statusMessage = message;
     }
 
-    public static void resetStatusMessage() {
+    public static void clearStatusMessage() {
         statusMessage = null;
     }
 
@@ -173,10 +172,10 @@ public class Viewer {
         });
     }
 
-    private static void prompt(String s, BiConsumer<String, Integer> callback) {
-        StringBuilder builder = new StringBuilder();
+    private static void prompt(String initialMessage, BiConsumer<String, Integer> callback) {
+        String message = initialMessage;
 
-        String message = s;
+        StringBuilder userInputBuilder = new StringBuilder();
 
         while (true) {
             setStatusMessage(message);
@@ -191,25 +190,25 @@ public class Viewer {
             }
 
             if (key == DEL || key == ctrl_key('h') || key == BACKSPACE ) {
-                if (builder.length() > 0) {
-                    builder.deleteCharAt(builder.length() - 1);
-                    message = builder.toString();
+                if (userInputBuilder.length() > 0) {
+                    userInputBuilder.deleteCharAt(userInputBuilder.length() - 1);
+                    message = userInputBuilder.toString();
                 }
             }
             else if (key == '\033') {  // escap
-                resetStatusMessage();
-                callback.accept(builder.toString(), key);
+                clearStatusMessage();
+                callback.accept(userInputBuilder.toString(), key);
                 return;
             } else if (key == 13) { // user pressed enter
-                resetStatusMessage();
-                callback.accept(builder.toString(), key);
+                clearStatusMessage();
+                callback.accept(userInputBuilder.toString(), key);
                 return;
             } else if (!Character.isISOControl(key)  && key < 128){
-                builder.append((char) key);
-                message = builder.toString();
+                userInputBuilder.append((char) key);
+                message = userInputBuilder.toString();
             }
 
-            callback.accept(builder.toString(), key);
+            callback.accept(userInputBuilder.toString(), key);
         }
     }
 
