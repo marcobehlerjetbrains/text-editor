@@ -628,7 +628,6 @@ class WindowsTerminal implements Terminal {
                         | Kernel32.ENABLE_MOUSE_INPUT
                         | Kernel32.ENABLE_WINDOW_INPUT
                         | Kernel32.ENABLE_PROCESSED_INPUT
-                        | Kernel32.ENABLE_PROCESSED_INPUT
         );
 
         inMode |= Kernel32.ENABLE_VIRTUAL_TERMINAL_INPUT;
