@@ -7,6 +7,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.List;
+import java.util.function.BiConsumer;
 import java.util.stream.Stream;
 
 public class Viewer {
@@ -17,10 +18,13 @@ public class Viewer {
             END = 1005,
             PAGE_UP = 1006,
             PAGE_DOWN = 1007,
-            DEL = 1008;
+            DEL = 1008,BACKSPACE = 127;
+
 
     private static int rows = 10;
     private static int columns = 10;
+
+    static String statusMessage;
 
     private static int cursorX = 0, offsetX = 0, cursorY = 0, offsetY = 0;
 
@@ -42,7 +46,6 @@ public class Viewer {
         initEditor();
 
         while (true) {
-            scroll();
             refreshScreen();
             int key = readKey();
             handleKey(key);
@@ -87,8 +90,8 @@ public class Viewer {
     }
 
     private static void refreshScreen() {
+        scroll();
         StringBuilder builder = new StringBuilder();
-
         moveCursorToTopLeft(builder);
         drawContent(builder);
         drawStatusBar(builder);
@@ -105,10 +108,10 @@ public class Viewer {
     }
 
     private static void drawStatusBar(StringBuilder builder) {
-        String statusMessage = "Rows: " + rows + "X:" + cursorX + " Y: " + cursorY;
+        String actualMessage = statusMessage != null ? statusMessage : "Rows: " + rows + "X:" + cursorX + " Y: " + cursorY;
         builder.append("\033[7m")
-                .append(statusMessage)
-                .append(" ".repeat(Math.max(0, columns - statusMessage.length())))
+                .append(actualMessage)
+                .append(" ".repeat(Math.max(0, columns - actualMessage.length())))
                 .append("\033[0m");
     }
 
@@ -194,14 +197,107 @@ public class Viewer {
     }
 
     private static void handleKey(int key) {
-        if (key == 'q') {
+        if (key == ctrl_key('q')) {
             exit();
+        }
+        else if (key == ctrl_key('f')) {
+            editorFind();
         } else if (List.of(ARROW_UP, ARROW_DOWN, ARROW_LEFT, ARROW_RIGHT, HOME, END, PAGE_UP, PAGE_DOWN).contains(key)) {
             moveCursor(key);
         }
         /*else {
             System.out.print((char) + key + " -> (" + key + ")\r\n");
         }*/
+    }
+
+    static int lastMatch = -1;
+
+    public enum SearchDirection {
+        FORWARDS, BACKWARDS
+    }
+
+    static SearchDirection searchDirection = SearchDirection.FORWARDS;
+
+    private static void editorFind() {
+        prompt("Search: %s (Use ESC/Arrows/Enter)", (query, lastKeyPress) -> {
+            if (query == null || query.isBlank()) {
+                lastMatch = -1;
+                searchDirection = SearchDirection.FORWARDS;
+                return;
+            }
+            if (lastKeyPress == ARROW_RIGHT || lastKeyPress == ARROW_DOWN ) {
+                searchDirection = SearchDirection.FORWARDS;
+            } else if (lastKeyPress == ARROW_LEFT || lastKeyPress == ARROW_UP) {
+                searchDirection = SearchDirection.BACKWARDS;
+            } else {
+                lastMatch = -1;
+                searchDirection = SearchDirection.FORWARDS;
+            }
+
+
+            if (lastMatch == -1) searchDirection = SearchDirection.FORWARDS;
+            int current = lastMatch;
+
+            for (int i = 0; i < content.size(); i++) {
+                current += searchDirection == SearchDirection.FORWARDS ? 1 : -1;
+                if (current == -1) {
+                    current = content.size() - 1;
+                } else if (current == content.size()) {
+                    current = 0;
+                }
+
+                String line = content.get(current);
+
+                int match = line.indexOf(query);
+
+                if (match != -1) {
+                    lastMatch = current;
+                    cursorY = current;
+                    cursorX = match;
+                    offsetY = content.size();
+                    return;
+                }
+            }
+        });
+    }
+
+    private static void prompt(String message, BiConsumer<String, Integer> callback) {
+        StringBuilder userInput = new StringBuilder();
+
+        while (true) {
+            setStatusMessage(userInput.length() > 0  ? userInput.toString() : message);
+            refreshScreen();
+            try {
+                int key = readKey();
+
+                if (key == DEL || key == ctrl_key('h') || key == BACKSPACE) {
+                    if (!userInput.isEmpty()) {
+                        userInput.deleteCharAt(userInput.length() - 1);
+                    }
+                } else if (key == '\033' || key == 13) {
+                    clearStatusMessage();
+                    return;
+                }   else if (!Character.isISOControl(key) && key < 128){
+                    userInput.append((char) key);
+                }
+                callback.accept(userInput.toString(), key);
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        }
+
+    }
+
+    private static void setStatusMessage(String message) {
+        statusMessage = message;
+    }
+
+    private static void clearStatusMessage() {
+        statusMessage = null;
+    }
+
+    private static int ctrl_key(char key) {
+        return key & 0x1f;  // =00011111
     }
 
     private static void exit() {
