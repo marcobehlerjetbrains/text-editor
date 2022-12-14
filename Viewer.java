@@ -28,7 +28,7 @@ public class Viewer {
 
     private static int cursorX = 0, offsetX = 0, cursorY = 0, offsetY = 0;
 
-    private static Terminal terminal =
+    private static final Terminal terminal =
             Platform.isWindows() ? new WindowsTerminal() :
                     Platform.isMac() ? new MacOsTerminal() : new UnixTerminal();
 
@@ -108,7 +108,7 @@ public class Viewer {
     }
 
     private static void drawStatusBar(StringBuilder builder) {
-        String actualMessage = statusMessage != null ? statusMessage : "Rows: " + rows + "X:" + cursorX + " Y: " + cursorY;
+        String actualMessage = statusMessage != null ? statusMessage : "Rows: " + rows + "X:" + cursorX + " Y: " + cursorY + " Offset Y: " + offsetY;
         builder.append("\033[7m")
                 .append(actualMessage)
                 .append(" ".repeat(Math.max(0, columns - actualMessage.length())))
@@ -221,10 +221,9 @@ public class Viewer {
     private static void editorFind() {
         prompt("Search: %s (Use ESC/Arrows/Enter)", (query, lastKeyPress) -> {
             if (query == null || query.isBlank()) {
-                lastMatch = -1;
-                searchDirection = SearchDirection.FORWARDS;
                 return;
             }
+
             if (lastKeyPress == ARROW_RIGHT || lastKeyPress == ARROW_DOWN ) {
                 searchDirection = SearchDirection.FORWARDS;
             } else if (lastKeyPress == ARROW_LEFT || lastKeyPress == ARROW_UP) {
@@ -234,8 +233,6 @@ public class Viewer {
                 searchDirection = SearchDirection.FORWARDS;
             }
 
-
-            if (lastMatch == -1) searchDirection = SearchDirection.FORWARDS;
             int current = lastMatch;
 
             for (int i = 0; i < content.size(); i++) {
@@ -672,7 +669,7 @@ class WindowsTerminal implements Terminal {
          * finished using the certificate, free the certificate context by
          * calling the CertFreeCertificateContext function.
          */
-        public static final int ENABLE_VIRTUAL_TERMINAL_PROCESSING = 0x0004, ENABLE_PROCESSED_OUTPUT = 0x0001;
+        int ENABLE_VIRTUAL_TERMINAL_PROCESSING = 0x0004, ENABLE_PROCESSED_OUTPUT = 0x0001;
 
         int ENABLE_LINE_INPUT = 0x0002;
         int ENABLE_PROCESSED_INPUT = 0x0001;
@@ -726,7 +723,7 @@ class WindowsTerminal implements Terminal {
             public SMALL_RECT srWindow;
             public COORD dwMaximumWindowSize;
 
-            private static String[] fieldOrder = {"dwSize", "dwCursorPosition", "wAttributes", "srWindow", "dwMaximumWindowSize"};
+            private static final String[] fieldOrder = {"dwSize", "dwCursorPosition", "wAttributes", "srWindow", "dwMaximumWindowSize"};
 
             @Override
             protected java.util.List<String> getFieldOrder() {
@@ -758,7 +755,7 @@ class WindowsTerminal implements Terminal {
             public short X;
             public short Y;
 
-            private static String[] fieldOrder = {"X", "Y"};
+            private static final String[] fieldOrder = {"X", "Y"};
 
             @Override
             protected java.util.List<String> getFieldOrder() {
@@ -792,7 +789,7 @@ class WindowsTerminal implements Terminal {
             public short Right;
             public short Bottom;
 
-            private static String[] fieldOrder = {"Left", "Top", "Right", "Bottom"};
+            private static final String[] fieldOrder = {"Left", "Top", "Right", "Bottom"};
 
             @Override
             protected java.util.List<String> getFieldOrder() {
