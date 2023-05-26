@@ -5,9 +5,11 @@ import com.sun.jna.win32.StdCallLibrary;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.function.BiConsumer;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 public class Viewer {
@@ -20,8 +22,7 @@ public class Viewer {
             PAGE_DOWN = 1007,
             DEL = 1008,
 
-            BACKSPACE = 127;
-
+    BACKSPACE = 127;
 
 
     private static int rows = 10;
@@ -48,12 +49,97 @@ public class Viewer {
         initEditor();
 
         while (true) {
-
             refreshScreen();
             int key = readKey();
             handleKey(key);
         }
 
+    }
+
+
+    private static void editorSave() {
+        if (currentFile == null) {
+            return;
+        }
+
+        try {
+            Files.write(currentFile, content);
+            setStatusMessage("Successfully saved file");
+        } catch (IOException e) {
+            e.printStackTrace();
+            setStatusMessage("There was an error saving your file %s".formatted(e.getMessage()));
+        }
+    }
+
+
+    private static void insertChar(int c) {
+        if (cursorY == content.size()) {
+            // append row
+            insertRowAt(content.size(), "");
+        }
+        insertCharIntoRow(cursorY, cursorX, c);
+        cursorX++;
+    }
+
+    private static void deleteChar() {
+        if (cursorY == content.size()) {
+            return;
+        }
+
+        if (cursorX == 0 && cursorY == 0) {
+            return;
+        }
+        if (cursorX > 0 ) {
+            deleteCharFromRow(cursorY, cursorX - 1);
+            cursorX--;
+        } else {
+            cursorX = content.get(cursorY - 1).length();
+            appendStringToRow(cursorY - 1, content.get(cursorY));
+            deleteRow(cursorY);
+            cursorY--;
+        }
+    }
+
+
+    private static void deleteRow(int at) {
+        if (at < 0 || at >= content.size()) return;
+        content.remove(at);
+    }
+
+
+    private static void appendStringToRow(int at
+            , String append) {
+        content.set(at, content.get(at) + append);
+    }
+
+    private static void insertRowAt(int at, String rowContent) {
+        if (at < 0 || at > content.size()) return;
+
+        content.add(at, rowContent);
+    }
+
+
+    private static void insertNewLine() {
+        if (cursorX == 0) {
+            insertRowAt(cursorY, "");
+        } else {
+            insertRowAt(cursorY + 1, content.get(cursorY).substring(cursorX));
+            content.set(cursorY, content.get(cursorY).substring(0, cursorX));
+        }
+        cursorY++;
+        cursorX = 0;
+    }
+
+    private static void insertCharIntoRow(int row, int at, int c) {
+        if (at < 0 || at > content.get(row).length()) at = content.get(row).length();
+        String editedLine = new StringBuilder(content.get(row)).insert(at, (char) c).toString();
+        content.set(row, editedLine);
+    }
+
+    private static void deleteCharFromRow(int row, int at) {
+        if (at < 0 || at > content.get(row).length()) return;
+        String editedLine = new StringBuilder(content.get(row)).deleteCharAt(at).toString();
+        content.set(row, editedLine);
     }
 
     private static void scroll() {
@@ -70,14 +156,26 @@ public class Viewer {
         }
     }
 
+
+    private static Path currentFile;
+
     private static void openFile(String[] args) {
         if (args.length == 1) {
             String filename = args[0];
             Path path = Path.of(filename);
             if (Files.exists(path)) {
                 try (Stream<String> stream = Files.lines(path)) {
-                    content = stream.toList();
+                    content = stream.collect((Collectors.toCollection(ArrayList::new)));
                 } catch (IOException e) {
+                    e.printStackTrace();
+                    // TODO
+                }
+                currentFile = path;
+            } else {
+                try {
+                    currentFile = Files.createFile(path);
+                } catch (IOException e) {
+                    e.printStackTrace();
                     // TODO
                 }
             }
@@ -136,7 +234,7 @@ public class Viewer {
                 searchDirection = SearchDirection.FORWARDS;
                 return;
             }
-            if (key == ARROW_RIGHT || key == ARROW_DOWN ) {
+            if (key == ARROW_RIGHT || key == ARROW_DOWN) {
                 searchDirection = SearchDirection.FORWARDS;
             } else if (key == ARROW_LEFT || key == ARROW_UP) {
                 searchDirection = SearchDirection.BACKWARDS;
@@ -189,13 +287,12 @@ public class Viewer {
                 key = '\033';
             }
 
-            if (key == DEL || key == ctrl_key('h') || key == BACKSPACE ) {
+            if (key == DEL || key == ctrl_key('h') || key == BACKSPACE) {
                 if (userInputBuilder.length() > 0) {
                     userInputBuilder.deleteCharAt(userInputBuilder.length() - 1);
                     message = userInputBuilder.toString();
                 }
-            }
-            else if (key == '\033') {  // escap
+            } else if (key == '\033') {  // escap
                 clearStatusMessage();
                 callback.accept(userInputBuilder.toString(), key);
                 return;
@@ -203,7 +300,7 @@ public class Viewer {
                 clearStatusMessage();
                 callback.accept(userInputBuilder.toString(), key);
                 return;
-            } else if (!Character.isISOControl(key)  && key < 128){
+            } else if (!Character.isISOControl(key) && key < 128) {
                 userInputBuilder.append((char) key);
                 message = userInputBuilder.toString();
             }
@@ -310,10 +407,19 @@ public class Viewer {
     private static void handleKey(int key) {
         if (key == ctrl_key('q')) {
             exit();
-        } else if (key == ctrl_key('f')) {
+        } else if (key == '\r') {
+            insertNewLine();
+        }
+        else if (key == ctrl_key('f')) {
             editorFind();
+        } else if (key == ctrl_key('s')) {
+            editorSave();
+        } else if (List.of(BACKSPACE, ctrl_key('h'), DEL).contains(key)) {
+            deleteChar();
         } else if (List.of(ARROW_UP, ARROW_DOWN, ARROW_LEFT, ARROW_RIGHT, HOME, END, PAGE_UP, PAGE_DOWN).contains(key)) {
             moveCursor(key);
+        } else {
+            insertChar(key);
         }
         /*else {
             System.out.print((char) + key + " -> (" + key + ")\r\n");
@@ -484,12 +590,12 @@ class UnixTerminal implements Terminal {
             @Override
             public String toString() {
                 return "Termios{" +
-                        "c_iflag=" + c_iflag +
-                        ", c_oflag=" + c_oflag +
-                        ", c_cflag=" + c_cflag +
-                        ", c_lflag=" + c_lflag +
-                        ", c_cc=" + Arrays.toString(c_cc) +
-                        '}';
+                       "c_iflag=" + c_iflag +
+                       ", c_oflag=" + c_oflag +
+                       ", c_cflag=" + c_cflag +
+                       ", c_lflag=" + c_lflag +
+                       ", c_cc=" + Arrays.toString(c_cc) +
+                       '}';
             }
         }
 
@@ -588,12 +694,12 @@ class MacOsTerminal implements Terminal {
             @Override
             public String toString() {
                 return "Termios{" +
-                        "c_iflag=" + c_iflag +
-                        ", c_oflag=" + c_oflag +
-                        ", c_cflag=" + c_cflag +
-                        ", c_lflag=" + c_lflag +
-                        ", c_cc=" + Arrays.toString(c_cc) +
-                        '}';
+                       "c_iflag=" + c_iflag +
+                       ", c_oflag=" + c_oflag +
+                       ", c_cflag=" + c_cflag +
+                       ", c_lflag=" + c_lflag +
+                       ", c_cc=" + Arrays.toString(c_cc) +
+                       '}';
             }
         }
 
@@ -624,10 +730,10 @@ class WindowsTerminal implements Terminal {
         int inMode;
         inMode = this.inMode.getValue() & ~(
                 Kernel32.ENABLE_ECHO_INPUT
-                        | Kernel32.ENABLE_LINE_INPUT
-                        | Kernel32.ENABLE_MOUSE_INPUT
-                        | Kernel32.ENABLE_WINDOW_INPUT
-                        | Kernel32.ENABLE_PROCESSED_INPUT
+                | Kernel32.ENABLE_LINE_INPUT
+                | Kernel32.ENABLE_MOUSE_INPUT
+                | Kernel32.ENABLE_WINDOW_INPUT
+                | Kernel32.ENABLE_PROCESSED_INPUT
         );
 
         inMode |= Kernel32.ENABLE_VIRTUAL_TERMINAL_INPUT;
